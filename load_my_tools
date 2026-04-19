@@ -1,31 +1,30 @@
 # =====================================================
-# load_my_tools.R
-# Chargeur expert pour TOUTES tes fonctions R (GitHub)
+# load_my_tools.R — Chargeur expert ULTIME 2026
 # =====================================================
 
-load_my_tools <- function(fichiers = c("ma_fonction.R")) {
+load_my_tools <- function(fichiers = c("ma_fonction.R", "pro_format_expert.R")) {
   
   base_url <- "https://raw.githubusercontent.com/aminnn8756589/my-r-tools/main/R/"
   
-  cat("🚀 Chargement des outils R depuis GitHub...\n")
+  cat("🚀 Chargement des outils R EXPERT 2026 depuis GitHub...\n")
   cat("📍 Repo :", "aminnn8756589/my-r-tools\n")
-  cat("📂 Dossier :", "R/\n\n")
+  cat("📂 Fichiers :", paste(fichiers, collapse = ", "), "\n\n")
   
   for (f in fichiers) {
     url <- paste0(base_url, f)
     tryCatch({
-      source(url)
-      cat("✅ Chargé avec succès →", f, "\n")
+      source(url, encoding = "UTF-8")
+      cat("✅ Chargé →", f, "\n")
     }, error = function(e) {
-      cat("❌ Erreur sur", f, "→ Vérifie que le fichier existe dans le dossier R/\n")
+      cat("❌ Erreur sur", f, "→ Vérifie le nom du fichier dans le dossier R/\n")
     })
   }
   
-  cat("\n🌍 Prêt à l'emploi même déconnecté de GitHub !\n")
+  cat("\n🌍 Tout est prêt — même déconnecté de GitHub !\n")
   cat("📅", format(Sys.Date(), "%d %B %Y"), "\n")
   cat("============================================================\n\n")
   
   invisible(TRUE)
 }
 
-cat("✅ load_my_tools() est maintenant disponible !\n")
+cat("✅ load_my_tools() prêt !\n")
