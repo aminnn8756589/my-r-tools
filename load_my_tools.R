@@ -20,7 +20,7 @@ load_my_tools <- function(fichiers = c("ma_fonction.R", "smart_impute.R")) {
     })
   }
   
-  cat("\n🌍 Tout est prêt — même déconnecté de GitHub !\n")
+  cat("\n🌍 Tout est prêt  !\n")
   cat("📅", format(Sys.Date(), "%d %B %Y"), "\n")
   cat("============================================================\n\n")
   
