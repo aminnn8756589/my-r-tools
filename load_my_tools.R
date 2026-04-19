@@ -2,7 +2,7 @@
 # load_my_tools.R — Chargeur expert ULTIME 2026
 # =====================================================
 
-load_my_tools <- function(fichiers = c("ma_fonction.R", "pro_format_expert.R")) {
+load_my_tools <- function(fichiers = c("ma_fonction.R", "smart_impute.R")) {
   
   base_url <- "https://raw.githubusercontent.com/aminnn8756589/my-r-tools/main/R/"
   
