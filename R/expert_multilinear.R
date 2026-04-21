@@ -1,19 +1,17 @@
-# Packages nécessaires (à installer une seule fois)
-# install.packages(c("dplyr", "ggplot2", "tidyr", "car", "corrplot"))
-
+# === CHARGE D'ABORD LES PACKAGES (obligatoire) ===
 library(dplyr)
 library(ggplot2)
 library(tidyr)
-library(car)       # pour VIF (très utilisé en 2026)
-library(corrplot)  # pour la heatmap (optionnel mais beau)
+library(car)       # VIF
+library(corrplot)  # heatmap
 
 expert_multilinear <- function(df,
-                                             target_var,                    # NOM de ta variable cible (ex: "prix")
-                                             predictors = NULL,             # NULL = toutes les autres colonnes
-                                             scale_numerics = TRUE,         # scaling robuste recommandé
-                                             create_dummies = TRUE,         # TRUE = one-hot encoding
-                                             interaction_terms = NULL,      # ex: c("var1*var2", "var3*var4") ou NULL
-                                             vif_threshold = 5,             # seuil classique pour alerter
+                                             target_var,
+                                             predictors = NULL,
+                                             scale_numerics = TRUE,
+                                             create_dummies = TRUE,
+                                             interaction_terms = NULL,
+                                             vif_threshold = 5,
                                              print_report = TRUE,
                                              visualize = TRUE) {
   
@@ -29,20 +27,23 @@ expert_multilinear <- function(df,
   num_vars <- predictors[sapply(df[predictors], is.numeric)]
   cat_vars <- predictors[!sapply(df[predictors], is.numeric)]
   
-  # 3. Création des dummies (one-hot encoding propre)
+  # 3. Création des dummies (version corrigée et robuste)
   if (create_dummies && length(cat_vars) > 0) {
-    dummies <- model.matrix(~ . - 1, data = df[cat_vars]) %>% 
-      as.data.frame() %>%
-      select(-matches("^(.*?)1$"))  # évite la dummy de référence redondante
+    cat_data <- df[cat_vars]
+    mm <- model.matrix(~ ., data = cat_data)          # référence automatiquement droppée
+    dummies <- as.data.frame(mm)[, -1, drop = FALSE]   # supprime la colonne intercept
+    names(dummies) <- gsub("`", "", names(dummies))    # nettoyage noms
     
+    # Reconstruction du dataframe
     df_prepared <- df_prepared %>%
-      select(-all_of(cat_vars)) %>%
-      bind_cols(dummies)
+      dplyr::select(-dplyr::all_of(cat_vars)) %>%
+      dplyr::bind_cols(dummies)
     
-    cat("\n✅ Variables catégorielles transformées en dummies (", length(cat_vars), "variables →", ncol(dummies), "colonnes)\n")
+    cat("\n✅ Variables catégorielles transformées en dummies (référence droppée) :", 
+        length(cat_vars), "variables →", ncol(dummies), "colonnes\n")
   }
   
-  # 4. Scaling robuste des variables numériques
+  # 4. Scaling robuste (médiane + MAD)
   if (scale_numerics && length(num_vars) > 0) {
     for (col in num_vars) {
       med <- median(df_prepared[[col]], na.rm = TRUE)
@@ -53,11 +54,11 @@ expert_multilinear <- function(df,
     cat("✅ Scaling robuste (médiane + MAD) appliqué sur", length(num_vars), "variables numériques\n")
   }
   
-  # 5. Ajout des interactions demandées
+  # 5. Interactions (optionnel)
   if (!is.null(interaction_terms)) {
     for (inter in interaction_terms) {
       vars <- strsplit(inter, "\\*")[[1]]
-      if (length(vars) == 2) {
+      if (length(vars) == 2 && all(vars %in% names(df_prepared))) {
         new_name <- paste(vars[1], vars[2], sep = "_x_")
         df_prepared[[new_name]] <- df_prepared[[vars[1]]] * df_prepared[[vars[2]]]
       }
@@ -76,31 +77,31 @@ expert_multilinear <- function(df,
   
   high_vif <- vif_table %>% filter(VIF > vif_threshold)
   
-  # 7. Rapport final
+  # 7. Rapport
   if (print_report) {
-    cat("\n=== RAPPORT EXPERT MULTILINEAR PREPARER 2026 ===\n")
+    cat("\n=== RAPPORT EXPERT MULTILINEAR PREPARER 2026 (version corrigée) ===\n")
     cat("Variable cible          :", target_var, "\n")
     cat("Nombre de prédicteurs   :", length(predictors), "\n")
     cat("Variables numériques    :", length(num_vars), "\n")
     cat("Variables catégorielles :", length(cat_vars), "\n")
     cat("Colonnes après préparation :", ncol(df_prepared) - 1, "\n\n")
     
-    cat("📊 Tableau VIF (les plus élevés en haut) :\n")
+    cat("📊 Tableau VIF :\n")
     print(vif_table, row.names = FALSE)
     
     if (nrow(high_vif) > 0) {
       cat("\n⚠️  ATTENTION : Variables avec VIF >", vif_threshold, ":\n")
       print(high_vif)
     } else {
-      cat("\n✅ Aucune multicolinéarité forte détectée (tous VIF <", vif_threshold, ")\n")
+      cat("\n✅ Aucune multicolinéarité forte détectée !\n")
     }
   }
   
-  # 8. Visualisation (heatmap de corrélation des numériques + dummies si peu de colonnes)
+  # 8. Heatmap de corrélation
   if (visualize) {
-    numeric_prepared <- df_prepared %>%
-      select(where(is.numeric)) %>%
-      select(-all_of(target_var))
+    numeric_prepared <- df_prepared %>% 
+      dplyr::select(where(is.numeric)) %>% 
+      dplyr::select(-dplyr::all_of(target_var))
     
     if (ncol(numeric_prepared) > 1) {
       cor_matrix <- cor(numeric_prepared, use = "complete.obs")
@@ -111,7 +112,7 @@ expert_multilinear <- function(df,
     }
   }
   
-  cat("\n✅ Préparation terminée ! Ton dataframe prêt pour la régression s'appelle `df_prepared`.\n")
+  cat("\n✅ Préparation terminée ! Ton dataframe prêt s'appelle `df_prepared`.\n")
   
   invisible(list(
     prepared_df = df_prepared,
