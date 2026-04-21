@@ -4,7 +4,7 @@ library(car)
 library(corrplot)
 library(tibble)
 
-expert_multilinear_preparer_2026 <- function(df,
+expert_multilinear<- function(df,
                                              target_var,
                                              predictors = NULL,
                                              scale_numerics = TRUE,
