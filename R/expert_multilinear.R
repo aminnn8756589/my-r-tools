@@ -1,11 +1,10 @@
-# === CHARGE D'ABORD LES PACKAGES (obligatoire) ===
+# === CHARGE CES PACKAGES UNE SEULE FOIS ===
 library(dplyr)
-library(ggplot2)
-library(tidyr)
-library(car)       # VIF
-library(corrplot)  # heatmap
+library(car)
+library(corrplot)
+library(tibble)
 
-expert_multilinear <- function(df,
+expert_multilinear_preparer_2026 <- function(df,
                                              target_var,
                                              predictors = NULL,
                                              scale_numerics = TRUE,
@@ -15,7 +14,6 @@ expert_multilinear <- function(df,
                                              print_report = TRUE,
                                              visualize = TRUE) {
   
-  df_original <- df
   df_prepared <- df
   
   # 1. Sélection des prédicteurs
@@ -23,38 +21,46 @@ expert_multilinear <- function(df,
     predictors <- names(df)[names(df) != target_var]
   }
   
-  # 2. Séparation numérique / catégorielle
-  num_vars <- predictors[sapply(df[predictors], is.numeric)]
-  cat_vars <- predictors[!sapply(df[predictors], is.numeric)]
+  # 2. Suppression colonnes constantes
+  constant_cols <- predictors[sapply(df[predictors], function(x) length(unique(na.omit(x))) <= 1)]
+  if (length(constant_cols) > 0) {
+    df_prepared <- df_prepared %>% dplyr::select(-dplyr::all_of(constant_cols))
+    predictors <- setdiff(predictors, constant_cols)
+    cat("⚠️  Colonnes constantes supprimées :", paste(constant_cols, collapse = ", "), "\n")
+  }
   
-  # 3. Création des dummies (version corrigée et robuste)
+  # 3. Création des dummies (ultra-robuste)
+  num_vars <- predictors[sapply(df_prepared[predictors], is.numeric)]
+  cat_vars <- predictors[!sapply(df_prepared[predictors], is.numeric)]
+  
   if (create_dummies && length(cat_vars) > 0) {
-    cat_data <- df[cat_vars]
-    mm <- model.matrix(~ ., data = cat_data)          # référence automatiquement droppée
-    dummies <- as.data.frame(mm)[, -1, drop = FALSE]   # supprime la colonne intercept
-    names(dummies) <- gsub("`", "", names(dummies))    # nettoyage noms
+    cat_data <- df_prepared[cat_vars]
+    mm <- model.matrix(~ . - 1, data = cat_data)
+    dummies <- as.data.frame(mm)
+    names(dummies) <- gsub("`", "", names(dummies))
     
-    # Reconstruction du dataframe
     df_prepared <- df_prepared %>%
       dplyr::select(-dplyr::all_of(cat_vars)) %>%
       dplyr::bind_cols(dummies)
     
-    cat("\n✅ Variables catégorielles transformées en dummies (référence droppée) :", 
+    cat("\n✅ Variables catégorielles → dummies :", 
         length(cat_vars), "variables →", ncol(dummies), "colonnes\n")
   }
   
-  # 4. Scaling robuste (médiane + MAD)
+  # 4. Scaling robuste
   if (scale_numerics && length(num_vars) > 0) {
     for (col in num_vars) {
-      med <- median(df_prepared[[col]], na.rm = TRUE)
-      mad_val <- mad(df_prepared[[col]], na.rm = TRUE)
-      if (mad_val == 0) mad_val <- sd(df_prepared[[col]], na.rm = TRUE) + 1e-6
-      df_prepared[[col]] <- (df_prepared[[col]] - med) / mad_val
+      if (col %in% names(df_prepared)) {
+        med <- median(df_prepared[[col]], na.rm = TRUE)
+        mad_val <- mad(df_prepared[[col]], na.rm = TRUE)
+        if (mad_val == 0) mad_val <- sd(df_prepared[[col]], na.rm = TRUE) + 1e-6
+        df_prepared[[col]] <- (df_prepared[[col]] - med) / mad_val
+      }
     }
-    cat("✅ Scaling robuste (médiane + MAD) appliqué sur", length(num_vars), "variables numériques\n")
+    cat("✅ Scaling robuste (médiane + MAD) appliqué\n")
   }
   
-  # 5. Interactions (optionnel)
+  # 5. Interactions
   if (!is.null(interaction_terms)) {
     for (inter in interaction_terms) {
       vars <- strsplit(inter, "\\*")[[1]]
@@ -66,38 +72,50 @@ expert_multilinear <- function(df,
     cat("✅ Interactions ajoutées :", paste(interaction_terms, collapse = ", "), "\n")
   }
   
-  # 6. Vérification multicolinéarité (VIF)
+  # 6. VIF ULTRA-ROBUSTE (gère les deux formats de car::vif)
   formula_vif <- as.formula(paste(target_var, "~ ."))
   model_vif <- lm(formula_vif, data = df_prepared)
-  vif_table <- car::vif(model_vif) %>% 
-    as.data.frame() %>%
-    tibble::rownames_to_column("Variable") %>%
-    rename(VIF = `GVIF`, `VIF_adj` = `GVIF^(1/(2*Df))`) %>%
-    arrange(desc(VIF))
+  
+  vif_result <- car::vif(model_vif)
+  
+  # Gestion des deux cas possibles
+  if (is.vector(vif_result) && !is.list(vif_result)) {
+    # Cas classique : toutes variables numériques → vecteur simple
+    vif_table <- data.frame(
+      Variable = names(vif_result),
+      VIF = as.numeric(vif_result),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    # Cas avec facteurs/dummies → data.frame avec GVIF
+    vif_table <- as.data.frame(vif_result) %>%
+      tibble::rownames_to_column("Variable") %>%
+      rename(VIF = any_of("GVIF"),
+             VIF_adj = any_of("GVIF^(1/(2*Df))")) %>%
+      mutate(VIF = ifelse(is.na(VIF), .[[2]], VIF))  # fallback sécurisé
+  }
+  
+  vif_table <- vif_table %>% arrange(desc(VIF))
   
   high_vif <- vif_table %>% filter(VIF > vif_threshold)
   
   # 7. Rapport
   if (print_report) {
-    cat("\n=== RAPPORT EXPERT MULTILINEAR PREPARER 2026 (version corrigée) ===\n")
+    cat("\n=== RAPPORT EXPERT MULTILINEAR PREPARER 2026 (VIF corrigé) ===\n")
     cat("Variable cible          :", target_var, "\n")
-    cat("Nombre de prédicteurs   :", length(predictors), "\n")
-    cat("Variables numériques    :", length(num_vars), "\n")
-    cat("Variables catégorielles :", length(cat_vars), "\n")
     cat("Colonnes après préparation :", ncol(df_prepared) - 1, "\n\n")
-    
     cat("📊 Tableau VIF :\n")
     print(vif_table, row.names = FALSE)
     
     if (nrow(high_vif) > 0) {
-      cat("\n⚠️  ATTENTION : Variables avec VIF >", vif_threshold, ":\n")
+      cat("\n⚠️  ATTENTION :", nrow(high_vif), "variables avec VIF >", vif_threshold, "\n")
       print(high_vif)
     } else {
       cat("\n✅ Aucune multicolinéarité forte détectée !\n")
     }
   }
   
-  # 8. Heatmap de corrélation
+  # 8. Heatmap
   if (visualize) {
     numeric_prepared <- df_prepared %>% 
       dplyr::select(where(is.numeric)) %>% 
@@ -112,7 +130,7 @@ expert_multilinear <- function(df,
     }
   }
   
-  cat("\n✅ Préparation terminée ! Ton dataframe prêt s'appelle `df_prepared`.\n")
+  cat("\n✅ Préparation terminée avec succès ! `df_prepared` est prêt.\n")
   
   invisible(list(
     prepared_df = df_prepared,
