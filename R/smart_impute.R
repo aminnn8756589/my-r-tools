@@ -197,3 +197,4 @@ smart_impute <- function(data,
     report = report_final
   ))
 }
+df_imputed <- smart_impute(df)$data
