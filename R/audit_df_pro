@@ -1,0 +1,37 @@
+audit_df_pro <- function(df, export_html = FALSE, file = "audit_report.html") {
+  if (!is.data.frame(df)) stop("df must be a data.frame")
+  message("Initialisation du diagnostic...")
+  pkgs <- c("ggplot2","knitr","kableExtra","dplyr")
+  invisible(lapply(pkgs, function(p) {
+    if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
+    suppressPackageStartupMessages(library(p, character.only = TRUE))
+  }))
+  
+  n_obs <- nrow(df); n_vars <- ncol(df)
+  na_global <- mean(is.na(df))*100
+  dup <- sum(duplicated(df))
+  num_vars <- names(df)[sapply(df, is.numeric)]
+  cat("\n=== AUDIT DATASET PRO ===\n")
+  cat("Observations:", n_obs, "\n")
+  cat("Variables:", n_vars, "\n")
+  cat("NA global (%):", round(na_global,2), "\n")
+  cat("Doublons:", dup, "\n\n")
+  
+  meta <- data.frame(
+    Variable = names(df),
+    Classe = sapply(df, function(x) class(x)[1]),
+    NA_pct = round(sapply(df, function(x) mean(is.na(x))*100),2),
+    Uniques = sapply(df, function(x) length(unique(na.omit(x))))
+  )
+  print(knitr::kable(meta))
+  
+  if (length(num_vars) > 0) {
+    for (v in num_vars) {
+      x <- df[[v]]
+      cat("\n---", v, "---\n")
+      print(summary(x))
+    }
+  }
+  
+  invisible(list(summary = meta, n = n_obs, p = n_vars))
+}
