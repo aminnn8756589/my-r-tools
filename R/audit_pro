@@ -1,4 +1,4 @@
-audit_df_pro2 <- function(df, export_html = FALSE, file = "audit_report.html") {
+audit_pro <- function(df, export_html = FALSE, file = "audit_report.html") {
   if (!is.data.frame(df)) stop("df must be a data.frame")
   message("Initialisation du diagnostic...")
   pkgs <- c("ggplot2","knitr","kableExtra","dplyr")
