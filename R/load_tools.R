@@ -2,7 +2,7 @@
 # load_my_tools.R — Chargeur expert ULTIME 2026
 # =====================================================
 
-load_my_tools <- function(fichiers = c("smart_impute.R", "expert_outlier_handler_2026.R", "audit.R")) {
+load_tools <- function(fichiers = c("smart_impute.R", "expert_outlier_handler_2026.R", "audit.R")) {
   
   base_url <- "https://raw.githubusercontent.com/aminnn8756589/my-r-tools/main/R/"
   
