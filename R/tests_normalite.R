@@ -23,7 +23,7 @@ library(nortest) # pour le test K-S (lillie.test)
 
 tests_normalite <- function(df,
                             nom_fichier = "tests_normalite",
-                            dossier_output = "output-data",
+                            dossier_output = "output",
                             seuil = 0.05) {
 
   # POURQUOI CE BLOC ?
