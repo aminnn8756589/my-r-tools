@@ -2,7 +2,7 @@
 # load_my_tools.R — Chargeur expert ULTIME 2026
 # =====================================================
 
-load_tools <- function(fichiers = c("expert_outlier_handler_2026.R", "analyse_descriptive_pro.R" "audit.R", "analyse_exploratoire", "traiter_outliers.R")) {
+load_tools <- function(fichiers = c("expert_outlier_handler_2026.R", "analyse_descriptive_pro.R" ,"audit.R", "analyse_exploratoire", "traiter_outliers.R")) {
   
   base_url <- "https://raw.githubusercontent.com/aminnn8756589/my-r-tools/main/R/"
   
